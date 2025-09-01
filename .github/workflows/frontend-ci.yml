@@ -29,7 +29,7 @@ jobs:
 
       # Install & build frontend
       - name: Install and build frontend
-        working-directory: ./ProductApp-UI-main
+       #working-directory: ./ProductApp-UI-main
         run: |
           npm install --legacy-peer-deps
           CI='' npm run build
