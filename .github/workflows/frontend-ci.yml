@@ -1,0 +1,57 @@
+name: Frontend CI/CD - Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/*'
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+jobs:
+  frontend-build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout code
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # Install & build frontend
+      - name: Install and build frontend
+        working-directory: ./ProductApp-UI-main
+        run: |
+          npm install --legacy-peer-deps
+          CI='' npm run build
+
+      # Docker login
+      - name: Docker login
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      # Build frontend Docker image
+      - name: Build frontend Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend ./ProductApp-UI-main
+
+      # Scan frontend image
+      - name: Scan frontend image with Trivy
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+
+      # Push frontend image
+      - name: Push frontend image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend
