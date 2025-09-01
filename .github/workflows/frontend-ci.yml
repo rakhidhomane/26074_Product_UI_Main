@@ -40,7 +40,7 @@ jobs:
 
       # Build frontend Docker image
       - name: Build frontend Docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend ./ProductApp-UI-main
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend .
 
       # Scan frontend image
       - name: Scan frontend image with Trivy
