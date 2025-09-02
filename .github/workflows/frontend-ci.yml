@@ -29,7 +29,6 @@ jobs:
 
       # Install & build frontend
       - name: Install and build frontend
-       #working-directory: ./ProductApp-UI-main
         run: |
           npm install --legacy-peer-deps
           CI='' npm run build
@@ -38,20 +37,33 @@ jobs:
       - name: Docker login
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
+      # Set Docker image tag (build number)
+      - name: Set Docker Image Tag
+        run: echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
+
       # Build frontend Docker image
       - name: Build frontend Docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend .
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend:${IMAGE_TAG} .
 
-      # Scan frontend image
+      # Scan frontend image with Trivy
       - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
         with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend
-          format: table
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend:${{ env.IMAGE_TAG }}
+          format: json
+          output: trivy-frontend-report.json
           exit-code: 1
           severity: CRITICAL,HIGH
 
-      # Push frontend image
-      - name: Push frontend image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend
+      # Upload Trivy scan report
+      - name: Upload Trivy scan report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-frontend-report
+          path: trivy-frontend-report.json
+
+      # Push frontend image with build number tag
+      - name: Push frontend Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/product-app-frontend:${IMAGE_TAG}
+
